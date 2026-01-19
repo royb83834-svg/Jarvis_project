@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JARVIS AI Project – Class 10</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>JARVIS – AI Desktop Assistant</h1>
+    <p>Class 10 Artificial Intelligence Project (Python Based)</p>
+</header>
+
+<nav>
+    <a href="#intro">Introduction</a>
+    <a href="#team">Team Members</a>
+    <a href="#why">Why JARVIS</a>
+    <a href="#libraries">Libraries Used</a>
+    <a href="#alternate">Alternatives</a>
+    <a href="#code">Source Code</a>
+    <a href="#future">Future Scope</a>
+</nav>
+
+<section id="intro">
+    <h2>1. Introduction</h2>
+    <p>
+        JARVIS (Just A Rather Very Intelligent System) is a Python-based AI desktop assistant.
+        This project is inspired by the AI assistant shown in the Iron Man movies.
+        The goal of this project is to demonstrate the use of <span class="highlight">Artificial Intelligence, Voice Recognition, GUI design, and System Automation</span> using Python.
+    </p>
+    <p>
+        The assistant can listen to voice commands, respond using artificial intelligence,
+        control system applications, perform calculations, and display information using a HUD-style graphical interface.
+    </p>
+</section>
+
+<section id="team">
+    <h2>2. Team Members</h2>
+    <ul>
+        <li><b>Leader:</b> Bishal Roy</li>
+        <li>Aarav</li>
+        <li>Priya</li>
+        <li>Rohan</li>
+        <li>Ananya</li>
+        <li>Sayan</li>
+        <li>Ishita</li>
+        <li>Kabir</li>
+    </ul>
+</section>
+
+<section id="why">
+    <h2>3. Why We Chose JARVIS</h2>
+    <ul>
+        <li>It clearly demonstrates real-life applications of Artificial Intelligence.</li>
+        <li>Voice-based interaction makes the project modern and interactive.</li>
+        <li>Combines multiple concepts: AI, Python, GUI, system control.</li>
+        <li>Inspired by Iron Man, making it attractive and easy to explain.</li>
+        <li>Helps understand how virtual assistants like Alexa and Siri work.</li>
+    </ul>
+</section>
+
+<section id="libraries">
+    <h2>4. Libraries Used and Their Purpose</h2>
+    <ul>
+        <li><b>PyQt5</b> – To create the HUD-style graphical user interface.</li>
+        <li><b>sounddevice</b> – To record microphone input (used instead of PyAudio).</li>
+        <li><b>scipy</b> – To save recorded audio as WAV files.</li>
+        <li><b>pyttsx3</b> – For text-to-speech output.</li>
+        <li><b>openai</b> – For AI-based intelligent responses.</li>
+        <li><b>psutil</b> – To get system information like CPU and battery.</li>
+        <li><b>pycaw</b> – To control system volume.</li>
+        <li><b>subprocess</b> – To open system applications reliably on Windows.</li>
+    </ul>
+</section>
+
+<section id="alternate">
+    <h2>5. Why Alternatives Were Used</h2>
+    <p>
+        Initially, the <b>PyAudio</b> library was considered for voice input. However, PyAudio often causes installation
+        problems on Windows systems due to dependency and compiler issues.
+    </p>
+    <p>
+        Therefore, <span class="highlight">sounddevice</span> was used as a stable and reliable alternative.
+        Similarly, instead of using third-party app launchers, native Windows commands were used
+        to ensure compatibility on school and personal computers.
+    </p>
+</section>
+
+<section id="code">
+    <h2>6. Source Code</h2>
+    <p>The complete source code of the JARVIS AI project is provided below:</p>
+    <pre>
+# Time to add libries we download.
+import sys, os, webbrowser, datetime
+import numpy as np
+import sounddevice as sd
+import scipy.io.wavfile as wav
+import pyttsx3
+import openai
+import appopener
+import psutil
+
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
+from PyQt5.QtGui import QFont, QColor, QPalette
+from PyQt5.QtCore import QTimer
+
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+
+from config import OPENAI_API_KEY
+
+#  CONFIG 
+openai.api_key = OPENAI_API_KEY
+
+engine = pyttsx3.init()
+engine.setProperty("rate", 170)
+
+#  HUD GUI 
+class JarvisHUD(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("JARVIS HUD")
+        self.setGeometry(200, 200, 700, 350)
+
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(0, 0, 0))
+        palette.setColor(QPalette.WindowText, QColor(0, 255, 255))
+        self.setPalette(palette)
+
+        self.title = QLabel("J.A.R.V.I.S  ONLINE")
+        self.title.setFont(QFont("Orbitron", 22))
+
+        self.output = QLabel("Awaiting command...")
+        self.output.setFont(QFont("Consolas", 14))
+        self.output.setWordWrap(True)
+
+        self.time = QLabel("")
+        self.time.setFont(QFont("Consolas", 12))
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.title)
+        layout.addWidget(self.output)
+        layout.addWidget(self.time)
+        self.setLayout(layout)
+
+        timer = QTimer(self)
+        timer.timeout.connect(self.update_time)
+        timer.start(1000)
+
+    def update_time(self):
+        self.time.setText(
+            "SYSTEM TIME : " +
+            datetime.datetime.now().strftime("%H:%M:%S")
+        )
+
+    def update_text(self, text):
+        self.output.setText(text)
+        QApplication.processEvents()
+
+# SPEAK 
+def speak(text):
+    hud.update_text("JARVIS: " + text)
+    engine.say(text)
+    engine.runAndWait()
+
+#  LISTEN (NO PyAudio)
+def listen(duration=4):
+    fs = 44100
+    hud.update_text("Listening...")
+    recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
+    sd.wait()
+    wav.write("input.wav", fs, recording)
+
+    audio = open("input.wav", "rb")
+    result = openai.Audio.transcribe("whisper-1", audio)
+    return result["text"].lower()
+
+#  AI BRAIN 
+def ai_reply(query):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system",
+             "content": "You are JARVIS, an army-style intelligent assistant. Be short and precise."},
+            {"role": "user", "content": query}
+        ]
+    )
+    return response.choices[0].message["content"]
+
+#  VOLUME CONTROL 
+def set_volume(level):
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(
+        IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+    if level == "up":
+        volume.SetMasterVolumeLevelScalar(0.9, None)
+    elif level == "down":
+        volume.SetMasterVolumeLevelScalar(0.3, None)
+    elif level == "mute":
+        volume.SetMute(1, None)
+
+# CALCULATOR 
+def calculate(text):
+    try:
+        text = text.replace("plus", "+").replace("minus", "-")
+        text = text.replace("into", "*").replace("multiply", "*")
+        text = text.replace("divide", "/")
+        exp = ''.join(c for c in text if c.isdigit() or c in "+-*/.")
+        result = eval(exp)
+        speak(f"The answer is {result}")
+    except:
+        speak("Calculation error")
+
+# SYSTEM INFO
+def system_info():
+    cpu = psutil.cpu_percent()
+    battery = psutil.sensors_battery().percent
+    speak(f"CPU usage is {cpu} percent and battery is {battery} percent")
+
+# COMMAND PROCESSOR 
+def process_command(cmd):
+    hud.update_text("User: " + cmd)
+
+    # TIME
+    if any(x in cmd for x in ["time", "current time", "what time"]):
+        speak(datetime.datetime.now().strftime("It is %I:%M %p"))
+
+    # DATE & DAY
+    elif "date" in cmd or "day" in cmd:
+        speak(datetime.datetime.now().strftime("Today is %A, %d %B %Y"))
+
+    # WEB SEARCH
+    elif "search" in cmd:
+        query = cmd.replace("search", "")
+        webbrowser.open(f"https://google.com/search?q={query}")
+        speak(f"Searching {query}")
+
+    # OPEN APPS
+    elif "open" in cmd:
+        app = cmd.replace("open", "").strip()
+        try:
+            appopener.open(app)
+            speak(f"Opening {app}")
+        except:
+            speak("Application not found")
+
+    # CALCULATOR
+    elif any(x in cmd for x in ["calculate", "plus", "minus", "into", "divide"]):
+        calculate(cmd)
+
+    # VOLUME
+    elif "volume up" in cmd:
+        set_volume("up")
+        speak("Volume increased")
+
+    elif "volume down" in cmd:
+        set_volume("down")
+        speak("Volume decreased")
+
+    elif "mute" in cmd:
+        set_volume("mute")
+        speak("Volume muted")
+
+    # SYSTEM STATUS
+    elif "system" in cmd or "battery" in cmd:
+        system_info()
+
+    # EXIT
+    elif "exit" in cmd or "shutdown" in cmd:
+        speak("Shutting down. Goodbye sir.")
+        sys.exit()
+
+    # AI CHAT
+    else:
+        speak(ai_reply(cmd))
+
+#  MAIN LOOP 
+def start_jarvis():
+    speak("JARVIS activated")
+    while True:
+        try:
+            command = listen()
+            process_command(command)
+        except:
+            speak("Please repeat")
+
+
+app = QApplication(sys.argv)
+hud = JarvisHUD()
+hud.show()
+
+QTimer.singleShot(2000, start_jarvis)
+sys.exit(app.exec_())
+
+    </pre>
+    <p>
+        This modular structure ensures readability, easy debugging, and future expansion.
+    </p>
+</section>
+
+<section id="future">
+    <h2>7. Future Scope</h2>
+    <ul>
+        <li>Adding wake-word detection ("Hey JARVIS").</li>
+        <li>Support for Hindi and Bengali languages.</li>
+        <li>Animated Iron-Man HUD interface.</li>
+        <li>Smart home and IoT integration.</li>
+        <li>AI-based authentication while maintaining privacy and ethical guidelines.</li>
+    </ul>
+</section>
+
+<footer>
+    <p>Prepared by: <b>Leader: Bishal Roy & Team Members: Aarav, Priya, Rohan, Ananya, Sayan, Ishita, Kabir</b></p>
+    <p>Class: X | Subject: Artificial Intelligence</p>
+    <p>School: Army Public School, Bengdubi</p>
+</footer>
+
+</body>
+</html>

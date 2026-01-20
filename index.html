@@ -92,14 +92,14 @@
     <h2>6. Source Code</h2>
     <p>The complete source code of the JARVIS AI project is provided below:</p>
     <pre>
-# Time to add libries we download.
+# Time to add libraries we download.
 import sys, os, webbrowser, datetime
 import numpy as np
 import sounddevice as sd
 import scipy.io.wavfile as wav
 import pyttsx3
 import openai
-import appopener
+import AppOpener
 import psutil
 
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
@@ -112,13 +112,15 @@ from comtypes import CLSCTX_ALL
 
 from config import OPENAI_API_KEY
 
-#  CONFIG 
+
+# ---------------- CONFIG ----------------
 openai.api_key = OPENAI_API_KEY
 
 engine = pyttsx3.init()
 engine.setProperty("rate", 170)
 
-#  HUD GUI 
+
+# ---------------- HUD GUI ----------------
 class JarvisHUD(QWidget):
     def __init__(self):
         super().__init__()
@@ -163,13 +165,15 @@ class JarvisHUD(QWidget):
         self.output.setText(text)
         QApplication.processEvents()
 
-# SPEAK 
+
+# ---------------- SPEAK ----------------
 def speak(text):
     hud.update_text("JARVIS: " + text)
     engine.say(text)
     engine.runAndWait()
 
-#  LISTEN (NO PyAudio)
+
+# ---------------- LISTEN (NO PyAudio) ----------------
 def listen(duration=4):
     fs = 44100
     hud.update_text("Listening...")
@@ -177,11 +181,13 @@ def listen(duration=4):
     sd.wait()
     wav.write("input.wav", fs, recording)
 
-    audio = open("input.wav", "rb")
-    result = openai.Audio.transcribe("whisper-1", audio)
+    with open("input.wav", "rb") as audio_file:
+        result = openai.Audio.transcribe("whisper-1", audio_file)
+
     return result["text"].lower()
 
-#  AI BRAIN 
+
+# ---------------- AI BRAIN ----------------
 def ai_reply(query):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
@@ -193,7 +199,8 @@ def ai_reply(query):
     )
     return response.choices[0].message["content"]
 
-#  VOLUME CONTROL 
+
+# ---------------- VOLUME CONTROL ----------------
 def set_volume(level):
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(
@@ -207,7 +214,8 @@ def set_volume(level):
     elif level == "mute":
         volume.SetMute(1, None)
 
-# CALCULATOR 
+
+# ---------------- CALCULATOR ----------------
 def calculate(text):
     try:
         text = text.replace("plus", "+").replace("minus", "-")
@@ -219,44 +227,42 @@ def calculate(text):
     except:
         speak("Calculation error")
 
-# SYSTEM INFO
+
+# ---------------- SYSTEM INFO ----------------
 def system_info():
     cpu = psutil.cpu_percent()
-    battery = psutil.sensors_battery().percent
+    battery_info = psutil.sensors_battery()
+    battery = battery_info.percent if battery_info else "unknown"
     speak(f"CPU usage is {cpu} percent and battery is {battery} percent")
 
-# COMMAND PROCESSOR 
+
+# ---------------- COMMAND PROCESSOR ----------------
 def process_command(cmd):
     hud.update_text("User: " + cmd)
 
-    # TIME
     if any(x in cmd for x in ["time", "current time", "what time"]):
         speak(datetime.datetime.now().strftime("It is %I:%M %p"))
 
-    # DATE & DAY
     elif "date" in cmd or "day" in cmd:
         speak(datetime.datetime.now().strftime("Today is %A, %d %B %Y"))
 
-    # WEB SEARCH
     elif "search" in cmd:
-        query = cmd.replace("search", "")
+        query = cmd.replace("search", "").strip()
         webbrowser.open(f"https://google.com/search?q={query}")
         speak(f"Searching {query}")
 
-    # OPEN APPS
+    # -------- FIXED APP OPENER --------
     elif "open" in cmd:
         app = cmd.replace("open", "").strip()
         try:
-            appopener.open(app)
+            AppOpener.open(app)
             speak(f"Opening {app}")
         except:
             speak("Application not found")
 
-    # CALCULATOR
     elif any(x in cmd for x in ["calculate", "plus", "minus", "into", "divide"]):
         calculate(cmd)
 
-    # VOLUME
     elif "volume up" in cmd:
         set_volume("up")
         speak("Volume increased")
@@ -269,20 +275,18 @@ def process_command(cmd):
         set_volume("mute")
         speak("Volume muted")
 
-    # SYSTEM STATUS
     elif "system" in cmd or "battery" in cmd:
         system_info()
 
-    # EXIT
     elif "exit" in cmd or "shutdown" in cmd:
         speak("Shutting down. Goodbye sir.")
         sys.exit()
 
-    # AI CHAT
     else:
         speak(ai_reply(cmd))
 
-#  MAIN LOOP 
+
+# ---------------- MAIN LOOP ----------------
 def start_jarvis():
     speak("JARVIS activated")
     while True:
@@ -299,6 +303,7 @@ hud.show()
 
 QTimer.singleShot(2000, start_jarvis)
 sys.exit(app.exec_())
+
 
     </pre>
     <p>
@@ -325,4 +330,5 @@ sys.exit(app.exec_())
 
 </body>
 </html>
+
 
